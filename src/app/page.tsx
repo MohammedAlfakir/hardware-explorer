@@ -1,101 +1,182 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import dynamic from 'next/dynamic';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { events } from '@/lib/events';
+import { animationClock } from '@/state/animationClock';
+import { useActiveHardware, useHardwareStore } from '@/state/useHardwareStore';
+import { AnimationBar } from '@/ui/AnimationBar';
+import { InfoCard } from '@/ui/InfoCard';
+import { Sidebar } from '@/ui/Sidebar';
+import { StatCards } from '@/ui/StatCards';
+import { TopNav } from '@/ui/TopNav';
+import { ViewportToolbar } from '@/ui/ViewportToolbar';
+
+const SceneManager = dynamic(
+  () => import('@/three/SceneManager').then((m) => m.SceneManager),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="h-9 w-9 animate-spin rounded-full border-2 border-border border-t-accent" />
+      </div>
+    ),
+  },
+);
+
+/** Global keyboard shortcuts (skipped while typing in form fields). */
+function useHotkeys() {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const s = useHardwareStore.getState();
+      switch (e.key.toLowerCase()) {
+        case 'e': s.toggleExploded(); break;
+        case 'l': s.toggleLabels(); break;
+        case 'w': s.toggleWireframe(); break;
+        case 'x': s.toggleXray(); break;
+        case 'c': s.toggleSection(); break;
+        case 'm': s.toggleMeasure(); break;
+        case 'i': s.isolateSelection(); break;
+        case 'o': s.setCameraMode(s.cameraMode === 'perspective' ? 'orthographic' : 'perspective'); break;
+        case 'r': s.resetCamera(); break;
+        case 'f':
+          if (s.selectedPartIds.length === 1) {
+            events.emit('camera:focus-part', { partId: s.selectedPartIds[0] });
+          } else {
+            events.emit('camera:fit', undefined);
+          }
+          break;
+        case ' ':
+          e.preventDefault();
+          animationClock.toggle();
+          break;
+        case 'escape':
+          if (s.measureMode) s.toggleMeasure();
+          else if (s.isolatedPartIds.length > 0) s.clearIsolation();
+          else s.clearSelection();
+          break;
+        default:
+          return;
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+}
+
+export default function HomePage() {
+  useHotkeys();
+  const shell = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const measureMode = useHardwareStore((s) => s.measureMode);
+  const hardware = useActiveHardware();
+
+  const toggleFullscreen = useCallback(() => {
+    if (document.fullscreenElement) {
+      void document.exitFullscreen();
+    } else {
+      void shell.current?.requestFullscreen();
+    }
+  }, []);
+
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, []);
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <div ref={shell} className="flex h-dvh overflow-hidden bg-bg">
+      <Sidebar />
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+      <div className="flex min-w-0 flex-1 flex-col">
+        <TopNav />
+
+        <main
+          aria-label="Hardware explorer"
+          className="scrollbar-thin min-h-0 flex-1 overflow-y-auto"
         >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          <div className="mx-auto flex max-w-[1440px] flex-col px-4 pb-8 pt-6 tablet:px-7">
+            {/* Heading */}
+            <header className="mb-5">
+              <h1 className="text-3xl font-extrabold tracking-tight text-text-primary tablet:text-4xl">
+                {hardware.shortName}
+              </h1>
+              <p className="mt-1 text-md text-text-tertiary">
+                Interactive hardware component model
+              </p>
+            </header>
+
+            {/* 3D viewport */}
+            <section
+              aria-label="3D viewport"
+              className="relative min-h-[420px] overflow-hidden rounded-xl"
+              style={{ height: isFullscreen ? '72vh' : '58vh' }}
+            >
+              <div
+                aria-hidden
+                className="absolute inset-0"
+                style={{
+                  background:
+                    'radial-gradient(130% 110% at 50% 18%, #F0EFED 0%, #E4E3E0 55%, #D6D5D1 100%)',
+                }}
+              />
+              <SceneManager />
+              <ViewportToolbar />
+              <InfoCard />
+              {measureMode && (
+                <div className="pointer-events-none absolute left-1/2 top-3 z-20 -translate-x-1/2 rounded-full border border-amber/40 bg-glass px-3 py-1.5 text-2xs font-medium text-amber shadow-elevation-2 backdrop-blur-xl">
+                  Measure — click two points on the model
+                </div>
+              )}
+            </section>
+
+            {/* Animation / playback control bar */}
+            <AnimationBar isFullscreen={isFullscreen} onToggleFullscreen={toggleFullscreen} />
+
+            {/* Headline stat cards */}
+            <StatCards />
+
+            {/* About */}
+            <section aria-label="About this component" className="mt-4 grid gap-4 tablet-lg:grid-cols-[1.6fr_1fr]">
+              <div className="rounded-xl border border-border bg-surface1 p-6 shadow-elevation-1">
+                <h2 className="text-xs font-bold uppercase tracking-[0.18em] text-text-tertiary">
+                  About the {hardware.shortName}
+                </h2>
+                <p className="mt-3 text-md leading-relaxed text-text-secondary">
+                  {hardware.description}
+                </p>
+                <ul className="mt-5 flex flex-col gap-2.5">
+                  {hardware.facts.map((fact, i) => (
+                    <li key={i} className="flex gap-2.5 text-sm leading-relaxed text-text-secondary">
+                      <span className="mt-[8px] h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+                      {fact}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="rounded-xl border border-border bg-surface1 p-6 shadow-elevation-1">
+                <h2 className="text-xs font-bold uppercase tracking-[0.18em] text-text-tertiary">
+                  Specifications
+                </h2>
+                <dl className="mt-3 divide-y divide-border-subtle">
+                  {hardware.specs.map((spec) => (
+                    <div key={spec.label} className="flex items-baseline justify-between gap-3 py-2">
+                      <dt className="text-sm text-text-tertiary">{spec.label}</dt>
+                      <dd className="text-right font-mono text-sm font-medium text-text-primary">
+                        {spec.value}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            </section>
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

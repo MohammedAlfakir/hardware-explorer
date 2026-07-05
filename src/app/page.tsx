@@ -67,8 +67,20 @@ function useHotkeys() {
   }, []);
 }
 
+/** Deep-link support: /?model=cpu selects a model on load. */
+function useModelQueryParam() {
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('model');
+    const s = useHardwareStore.getState();
+    if (id && id !== s.activeHardwareId && ['cpu', 'gpu', 'ram', 'ssd', 'motherboard', 'cooling-fan'].includes(id)) {
+      s.setActiveHardware(id as Parameters<typeof s.setActiveHardware>[0]);
+    }
+  }, []);
+}
+
 export default function HomePage() {
   useHotkeys();
+  useModelQueryParam();
   const shell = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const measureMode = useHardwareStore((s) => s.measureMode);

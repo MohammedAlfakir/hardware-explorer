@@ -123,7 +123,7 @@ export function CameraManager() {
       controlMode === 'pan'
         ? ACTION.TOUCH_TRUCK
         : controlMode === 'zoom'
-          ? ACTION.TOUCH_DOLLY
+          ? ACTION.DOLLY
           : ACTION.TOUCH_ROTATE;
   }, [controlMode, cameraMode]);
 

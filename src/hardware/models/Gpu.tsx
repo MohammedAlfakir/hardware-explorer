@@ -1,7 +1,15 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Shape, Path, CatmullRomCurve3, Vector3 } from 'three';
+import {
+  CanvasTexture,
+  CatmullRomCurve3,
+  MeshStandardMaterial,
+  Path,
+  Shape,
+  SRGBColorSpace,
+  Vector3,
+} from 'three';
 import { RoundedBox } from '@react-three/drei';
 import { Part } from '@/three/Part';
 import { ActivityGrid, Anim, FlowPath } from '@/three/eduFx';
@@ -65,13 +73,60 @@ function useShroudSkirt() {
 /** Single swept fan blade planform (extruded, then pitched per instance). */
 function useBladeShape() {
   return useMemo(() => {
+    // Wide, strongly swept blade so 11 of them visually overlap like a real
+    // ring fan. Radial extent 0.26 → 0.95.
     const s = new Shape();
-    s.moveTo(0.24, 0.04);
-    s.quadraticCurveTo(0.55, 0.3, 0.95, 0.34);
-    s.quadraticCurveTo(1.0, 0.1, 0.96, -0.1);
-    s.quadraticCurveTo(0.6, -0.26, 0.27, -0.18);
-    s.quadraticCurveTo(0.2, -0.06, 0.24, 0.04);
+    s.moveTo(0.26, 0.1);
+    s.bezierCurveTo(0.5, 0.34, 0.72, 0.42, 0.95, 0.4);
+    s.bezierCurveTo(0.99, 0.2, 0.99, -0.02, 0.95, -0.18);
+    s.bezierCurveTo(0.7, -0.34, 0.44, -0.32, 0.28, -0.2);
+    s.bezierCurveTo(0.22, -0.08, 0.22, 0.02, 0.26, 0.1);
     return s;
+  }, []);
+}
+
+/** Thin annulus for the fan's connected rim (solid, correctly walled). */
+function useRimShape() {
+  return useMemo(() => {
+    const s = new Shape();
+    s.absarc(0, 0, 1.0, 0, Math.PI * 2, false);
+    const hole = new Path();
+    hole.absarc(0, 0, 0.955, 0, Math.PI * 2, true);
+    s.holes.push(hole);
+    return s;
+  }, []);
+}
+
+/** "HL" hub sticker — dark disc, orange ring + monogram (canvas texture). */
+function useHubSticker() {
+  return useMemo(() => {
+    if (typeof document === 'undefined') return null;
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 256;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#17181a';
+    ctx.beginPath();
+    ctx.arc(128, 128, 128, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#f6821f';
+    ctx.lineWidth = 10;
+    ctx.beginPath();
+    ctx.arc(128, 128, 96, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = '#f6821f';
+    ctx.font = 'bold 84px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('HL', 128, 134);
+    const tex = new CanvasTexture(canvas);
+    tex.colorSpace = SRGBColorSpace;
+    tex.anisotropy = 8;
+    return new MeshStandardMaterial({
+      map: tex,
+      metalness: 0.2,
+      roughness: 0.4,
+      envMapIntensity: 0.7,
+    });
   }, []);
 }
 
@@ -115,36 +170,44 @@ function useBracketShape() {
 function FanRotor({
   bladeMaterial,
   hubMaterial,
-  badgeMaterial,
+  stickerMaterial,
 }: {
   bladeMaterial: import('three').Material;
   hubMaterial: import('three').Material;
-  badgeMaterial: import('three').Material;
+  stickerMaterial: import('three').Material;
 }) {
   const blade = useBladeShape();
+  const rim = useRimShape();
   const blades = useMemo(() => Array.from({ length: 11 }, (_, i) => (i / 11) * Math.PI * 2), []);
 
   return (
     <group>
       {/* Hub */}
       <mesh castShadow material={hubMaterial}>
-        <cylinderGeometry args={[0.3, 0.33, 0.17, 40]} />
+        <cylinderGeometry args={[0.31, 0.34, 0.2, 48]} />
       </mesh>
-      <mesh position={[0, 0.088, 0]} material={hubMaterial}>
-        <sphereGeometry args={[0.3, 32, 12, 0, Math.PI * 2, 0, Math.PI / 3]} />
-      </mesh>
-      {/* Badge ring */}
-      <mesh position={[0, 0.13, 0]} rotation={[Math.PI / 2, 0, 0]} material={badgeMaterial}>
-        <torusGeometry args={[0.155, 0.018, 10, 40]} />
+      {/* Hub sticker */}
+      <mesh position={[0, 0.101, 0]} rotation={[-Math.PI / 2, 0, 0]} material={stickerMaterial}>
+        <circleGeometry args={[0.26, 48]} />
       </mesh>
       {/* Blades */}
       {blades.map((angle) => (
         <group key={angle} rotation={[0, angle, 0]}>
-          <mesh castShadow rotation={[-Math.PI / 2 + 0.42, 0, 0]} material={bladeMaterial}>
-            <extrudeGeometry args={[blade, { depth: 0.022, bevelEnabled: false }]} />
+          <mesh
+            castShadow
+            rotation={[-Math.PI / 2 + 0.4, 0, 0]}
+            material={bladeMaterial}
+          >
+            <extrudeGeometry
+              args={[blade, { depth: 0.02, bevelEnabled: true, bevelThickness: 0.006, bevelSize: 0.006, bevelSegments: 1 }]}
+            />
           </mesh>
         </group>
       ))}
+      {/* Connected outer rim ring (signature ring-fan look) */}
+      <mesh castShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.08, 0]} material={bladeMaterial}>
+        <extrudeGeometry args={[rim, { depth: 0.16, bevelEnabled: false, curveSegments: 64 }]} />
+      </mesh>
     </group>
   );
 }
@@ -161,6 +224,7 @@ export function GpuModel() {
   const shroudPlate = useShroudPlate();
   const shroudSkirt = useShroudSkirt();
   const bracket = useBracketShape();
+  const sticker = useHubSticker();
 
   const fins = useMemo(() => {
     const out: InstanceTransform[] = [];
@@ -386,9 +450,9 @@ export function GpuModel() {
       </Part>
 
       {/* ——— Fin-stack heatsink ——— */}
-      <Part definition={defOf(HW, 'heatsink')} position={[0, 0.38, 0]}>
+      <Part definition={defOf(HW, 'heatsink')} position={[0, 0.35, 0]}>
         <Instanced transforms={fins} material={mat('brushedAluminum')} castShadow={false}>
-          <boxGeometry args={[0.024, 0.44, 2.58]} />
+          <boxGeometry args={[0.024, 0.54, 2.58]} />
         </Instanced>
       </Part>
 
@@ -397,12 +461,12 @@ export function GpuModel() {
         {/* Top plate with true fan cutouts */}
         <mesh castShadow receiveShadow rotation={[-Math.PI / 2, 0, 0]} material={mat('shroudLight')}>
           <extrudeGeometry
-            args={[shroudPlate, { depth: 0.13, bevelEnabled: true, bevelThickness: 0.025, bevelSize: 0.025, bevelSegments: 2 }]}
+            args={[shroudPlate, { depth: 0.12, bevelEnabled: true, bevelThickness: 0.045, bevelSize: 0.045, bevelSegments: 3 }]}
           />
         </mesh>
         {/* Wrap-around skirt */}
-        <mesh castShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.42, 0]} material={mat('shroudLight')}>
-          <extrudeGeometry args={[shroudSkirt, { depth: 0.42, bevelEnabled: false }]} />
+        <mesh castShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.52, 0]} material={mat('shroudLight')}>
+          <extrudeGeometry args={[shroudSkirt, { depth: 0.52, bevelEnabled: false }]} />
         </mesh>
         {/* Dark fan wells */}
         {[-FAN_X, FAN_X].map((x) => (
@@ -425,12 +489,20 @@ export function GpuModel() {
       {/* ——— Fans ——— */}
       <Part definition={defOf(HW, 'fan-1')} position={[-FAN_X, 0.6, 0]}>
         <Spin axis="y" speed={7}>
-          <FanRotor bladeMaterial={mat('fanBladeLight')} hubMaterial={mat('plasticGloss')} badgeMaterial={mat('goldContact')} />
+          <FanRotor
+            bladeMaterial={mat('fanBladeLight')}
+            hubMaterial={mat('plasticGloss')}
+            stickerMaterial={sticker ?? mat('plasticGloss')}
+          />
         </Spin>
       </Part>
       <Part definition={defOf(HW, 'fan-2')} position={[FAN_X, 0.6, 0]}>
         <Spin axis="y" speed={-7}>
-          <FanRotor bladeMaterial={mat('fanBladeLight')} hubMaterial={mat('plasticGloss')} badgeMaterial={mat('goldContact')} />
+          <FanRotor
+            bladeMaterial={mat('fanBladeLight')}
+            hubMaterial={mat('plasticGloss')}
+            stickerMaterial={sticker ?? mat('plasticGloss')}
+          />
         </Spin>
       </Part>
 

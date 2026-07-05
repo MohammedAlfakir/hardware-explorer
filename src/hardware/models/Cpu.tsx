@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { Extrude, RoundedBox } from '@react-three/drei';
-import { Shape } from 'three';
+import { CanvasTexture, MeshStandardMaterial, Shape, SRGBColorSpace } from 'three';
 import type { ExtrudeGeometryOptions } from 'three';
 import { Part } from '@/three/Part';
 import { ActivityGrid, Anim, FlowPath, PulseRing, RisingParticles } from '@/three/eduFx';
@@ -16,29 +16,31 @@ const ORANGE_LIGHT = '#ffb25e';
 const TEAL = '#0fa48e';
 
 /* ——— Vertical stack (world Y, package lying flat, top up) ———
+ * Compressed to real package proportions: the whole assembly above the
+ * substrate is ~0.28 units on a 2.9-wide package (≈ 3.5 mm on 37 mm).
  * substrate  [-0.06 .. 0.06]
- * die        [ 0.06 .. 0.13]
- * core/cache [ 0.135 .. 0.195]
- * solder TIM [ 0.1975 .. 0.2325]
- * IHS        [ 0.245 .. 0.54] (skirt reaches down to the substrate)
+ * die        [ 0.05 .. 0.12]
+ * core/cache [ 0.12 .. 0.15]
+ * solder TIM [ 0.15 .. 0.19]
+ * IHS        [ 0.19 .. ~0.34] (thin stamped shell + low plateau)
  */
 const SUB_W = 2.9;
 const SUB_H = 0.12;
 const SUB_TOP = SUB_H / 2;
-const DIE_Y = 0.095;
-const LAYER_Y = 0.15;
-const TIM_Y = 0.215;
-const IHS_Y = 0.275; // lid extrusion origin; bottom bevel dips 0.03 below
-const SKIRT_H = 0.185; // substrate top -> lid underside
-const SKIRT_Y = -0.1225; // skirt center, local to the IHS part
+const DIE_Y = 0.085;
+const LAYER_Y = 0.135;
+const TIM_Y = 0.17;
+const IHS_Y = 0.205; // lid extrusion origin; bottom bevel dips slightly below
+const SKIRT_H = 0.133; // substrate top -> lid underside
+const SKIRT_Y = -0.0785; // skirt center, local to the IHS part
 
-/* IHS silhouette parameters (classic winged LGA lid) */
-const IHS_W = 1.32; // body half-width  (x)
-const IHS_H = 1.02; // body half-depth  (z)
-const IHS_E = 0.4; // wing extension beyond the body
-const IHS_C = 0.3; // body corner chamfer
-const WING_W = 0.7; // wing half-width
-const WING_C = 0.12; // wing corner chamfer
+/* IHS silhouette parameters (classic winged LGA lid — thin & flat) */
+const IHS_W = 1.24; // body half-width  (x)
+const IHS_H = 0.98; // body half-depth  (z)
+const IHS_E = 0.38; // wing extension beyond the body
+const IHS_C = 0.16; // body corner chamfer
+const WING_W = 0.66; // wing half-width
+const WING_C = 0.1; // wing corner chamfer
 
 /**
  * CPU — modern LGA desktop processor. Green package substrate with pin-1
@@ -49,6 +51,37 @@ const WING_C = 0.12; // wing corner chamfer
  */
 export function CpuModel() {
   const mat = useMat();
+
+  /* Laser-etched markings — subtle dark text baked into a transparent decal. */
+  const etchMaterial = useMemo(() => {
+    if (typeof document === 'undefined') return null;
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d')!;
+    ctx.clearRect(0, 0, 1024, 512);
+    ctx.fillStyle = 'rgba(82, 86, 92, 0.9)';
+    ctx.textAlign = 'center';
+    ctx.font = '600 54px system-ui, sans-serif';
+    ctx.fillText('HARDLAB®', 512, 150);
+    ctx.font = '700 78px system-ui, sans-serif';
+    ctx.fillText('HL CORE X16', 512, 258);
+    ctx.font = '500 46px ui-monospace, monospace';
+    ctx.fillText('5.7GHZ · 16C/32T', 512, 350);
+    ctx.font = '500 40px ui-monospace, monospace';
+    ctx.fillText("L432B061 · '26", 512, 424);
+    const tex = new CanvasTexture(canvas);
+    tex.colorSpace = SRGBColorSpace;
+    tex.anisotropy = 8;
+    return new MeshStandardMaterial({
+      map: tex,
+      transparent: true,
+      metalness: 0.85,
+      roughness: 0.65,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+    });
+  }, []);
 
   /* LGA land grid — 28×28 lands minus the central capacitor cavity (684). */
   const pads = useMemo(
@@ -115,29 +148,30 @@ export function CpuModel() {
     return s;
   }, []);
 
-  /* Raised central plateau — a chamfered square where the cooler contacts. */
+  /* Raised central plateau — low mesa with a soft rounded transition. */
   const plateauShape = useMemo(() => {
-    const P = 1.05;
-    const c = 0.32;
+    const P = 0.8;
+    const c = 0.16;
     const s = new Shape();
     s.moveTo(P, -(P - c));
     s.lineTo(P, P - c);
-    s.lineTo(P - c, P);
+    s.quadraticCurveTo(P, P, P - c, P);
     s.lineTo(-(P - c), P);
-    s.lineTo(-P, P - c);
+    s.quadraticCurveTo(-P, P, -P, P - c);
     s.lineTo(-P, -(P - c));
-    s.lineTo(-(P - c), -P);
+    s.quadraticCurveTo(-P, -P, -(P - c), -P);
     s.lineTo(P - c, -P);
+    s.quadraticCurveTo(P, -P, P, -(P - c));
     s.closePath();
     return s;
   }, []);
 
   const lidExtrude = useMemo<ExtrudeGeometryOptions>(
-    () => ({ depth: 0.16, steps: 1, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.03, bevelSegments: 2 }),
+    () => ({ depth: 0.045, steps: 1, bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.012, bevelSegments: 2 }),
     [],
   );
   const plateauExtrude = useMemo<ExtrudeGeometryOptions>(
-    () => ({ depth: 0.06, steps: 1, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.02, bevelSegments: 2 }),
+    () => ({ depth: 0.04, steps: 1, bevelEnabled: true, bevelThickness: 0.04, bevelSize: 0.04, bevelSegments: 4 }),
     [],
   );
 
@@ -208,33 +242,35 @@ export function CpuModel() {
         <RoundedBox args={[1.42, 0.035, 1.78]} radius={0.015} smoothness={2} material={mat('thermalPaste')} />
       </Part>
 
-      {/* Integrated heat spreader — extruded winged lid with raised plateau */}
+      {/* Integrated heat spreader — thin winged flange + low rounded plateau */}
       <Part definition={defOf(HW, 'ihs')} position={[0, IHS_Y, 0]}>
         <Extrude args={[lidShape, lidExtrude]} rotation={[-Math.PI / 2, 0, 0]} castShadow receiveShadow material={mat('brushedAluminum')} />
-        <Extrude args={[plateauShape, plateauExtrude]} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.185, 0]} castShadow material={mat('brushedAluminum')} />
-        {/* Laser-etched marking block on the plateau */}
-        <mesh position={[0, 0.268, -0.05]} material={mat('steel')}>
-          <boxGeometry args={[1.2, 0.004, 0.5]} />
+        <Extrude args={[plateauShape, plateauExtrude]} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.055, 0]} castShadow material={mat('brushedAluminum')} />
+        {/* Laser-etched markings */}
+        {etchMaterial && (
+          <mesh position={[0, 0.137, 0]} rotation={[-Math.PI / 2, 0, 0]} material={etchMaterial}>
+            <planeGeometry args={[1.45, 0.72]} />
+          </mesh>
+        )}
+        {/* Inset skirt wall sealing the lid to the substrate */}
+        <mesh position={[-1.02, SKIRT_Y, 0]} castShadow material={mat('brushedAluminum')}>
+          <boxGeometry args={[0.09, SKIRT_H, 1.6]} />
         </mesh>
-        {/* Skirt walls sealing the lid to the substrate */}
-        <mesh position={[-1.26, SKIRT_Y, 0]} castShadow material={mat('brushedAluminum')}>
-          <boxGeometry args={[0.1, SKIRT_H, 1.44]} />
+        <mesh position={[1.02, SKIRT_Y, 0]} castShadow material={mat('brushedAluminum')}>
+          <boxGeometry args={[0.09, SKIRT_H, 1.6]} />
         </mesh>
-        <mesh position={[1.26, SKIRT_Y, 0]} castShadow material={mat('brushedAluminum')}>
-          <boxGeometry args={[0.1, SKIRT_H, 1.44]} />
-        </mesh>
-        <mesh position={[0, SKIRT_Y, -0.98]} castShadow material={mat('brushedAluminum')}>
+        <mesh position={[0, SKIRT_Y, -0.82]} castShadow material={mat('brushedAluminum')}>
           <boxGeometry args={[2.0, SKIRT_H, 0.07]} />
         </mesh>
-        <mesh position={[0, SKIRT_Y, 0.98]} castShadow material={mat('brushedAluminum')}>
+        <mesh position={[0, SKIRT_Y, 0.82]} castShadow material={mat('brushedAluminum')}>
           <boxGeometry args={[2.0, SKIRT_H, 0.07]} />
         </mesh>
-        {/* Glue feet under the mounting wings */}
-        <mesh position={[0, SKIRT_Y, -1.21]} castShadow material={mat('brushedAluminum')}>
-          <boxGeometry args={[1.36, SKIRT_H, 0.38]} />
+        {/* Glue feet under the mounting wings (inset, shadowed) */}
+        <mesh position={[0, SKIRT_Y, -1.14]} castShadow material={mat('brushedAluminum')}>
+          <boxGeometry args={[1.05, SKIRT_H, 0.24]} />
         </mesh>
-        <mesh position={[0, SKIRT_Y, 1.21]} castShadow material={mat('brushedAluminum')}>
-          <boxGeometry args={[1.36, SKIRT_H, 0.38]} />
+        <mesh position={[0, SKIRT_Y, 1.14]} castShadow material={mat('brushedAluminum')}>
+          <boxGeometry args={[1.05, SKIRT_H, 0.24]} />
         </mesh>
       </Part>
 

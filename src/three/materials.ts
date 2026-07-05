@@ -94,11 +94,11 @@ type Recipe = () => MeshStandardMaterial;
 const RECIPES: Record<MaterialKey, Recipe> = {
   brushedAluminum: () =>
     new MeshPhysicalMaterial({
-      color: new Color('#c8ccd4'),
+      color: new Color('#c2c6cc'),
       metalness: 1,
-      roughness: 0.42,
+      roughness: 0.48,
       roughnessMap: getBrushedRoughness(),
-      envMapIntensity: 1.1,
+      envMapIntensity: 0.85,
     }),
   anodizedAluminum: () =>
     new MeshPhysicalMaterial({
@@ -119,12 +119,12 @@ const RECIPES: Record<MaterialKey, Recipe> = {
     }),
   shroudLight: () =>
     new MeshPhysicalMaterial({
-      color: new Color('#c4c4c1'),
-      metalness: 0.55,
-      roughness: 0.48,
-      clearcoat: 0.25,
-      clearcoatRoughness: 0.4,
-      envMapIntensity: 0.9,
+      color: new Color('#c7c7c4'),
+      metalness: 0.22,
+      roughness: 0.56,
+      clearcoat: 0.18,
+      clearcoatRoughness: 0.5,
+      envMapIntensity: 0.75,
     }),
   copper: () =>
     new MeshPhysicalMaterial({

@@ -42,22 +42,49 @@ interface RowProps {
 
 /** A labeled control row — icon, name, optional trailing control. */
 function ControlRow({ icon, label, active = false, onClick, trailing, disabled }: RowProps) {
+  const inner = (
+    <>
+      <Icon name={icon} size="md" className={active ? 'text-accent' : 'text-text-secondary'} />
+      <span className="flex-1">{label}</span>
+    </>
+  );
+  const rowClass = cx(
+    'flex h-11 w-full items-center gap-3 px-4 text-left text-sm font-medium transition-colors',
+    disabled && 'cursor-not-allowed opacity-40',
+    active ? 'text-accent' : 'text-text-primary',
+    !disabled && 'hover:bg-surface2',
+  );
+
+  // When the row carries an interactive trailing control (e.g. a Toggle, itself
+  // a <button>), the row cannot be a <button> too — nesting buttons is invalid
+  // HTML. Render the clickable area as its own button and keep the trailing
+  // control a sibling instead.
+  if (trailing) {
+    return (
+      <div className={cx(rowClass, 'gap-0')}>
+        <button
+          type="button"
+          onClick={onClick}
+          disabled={disabled}
+          aria-pressed={onClick ? active : undefined}
+          className="flex flex-1 items-center gap-3 text-left disabled:cursor-not-allowed"
+        >
+          {inner}
+        </button>
+        {trailing}
+      </div>
+    );
+  }
+
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
       aria-pressed={onClick ? active : undefined}
-      className={cx(
-        'flex h-11 w-full items-center gap-3 px-4 text-left text-sm font-medium transition-colors',
-        disabled && 'cursor-not-allowed opacity-40',
-        active ? 'text-accent' : 'text-text-primary',
-        !disabled && 'hover:bg-surface2',
-      )}
+      className={rowClass}
     >
-      <Icon name={icon} size="md" className={active ? 'text-accent' : 'text-text-secondary'} />
-      <span className="flex-1">{label}</span>
-      {trailing}
+      {inner}
     </button>
   );
 }

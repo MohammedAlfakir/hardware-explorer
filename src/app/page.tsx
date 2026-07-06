@@ -5,7 +5,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { events } from '@/lib/events';
 import { animationClock } from '@/state/animationClock';
 import { useActiveHardware, useHardwareStore } from '@/state/useHardwareStore';
-import { AnimationBar } from '@/ui/AnimationBar';
 import { InfoCard } from '@/ui/InfoCard';
 import { Sidebar } from '@/ui/Sidebar';
 import { StatCards } from '@/ui/StatCards';
@@ -145,9 +144,6 @@ export default function HomePage() {
                 </div>
               )}
             </section>
-
-            {/* Animation / playback control bar */}
-            <AnimationBar isFullscreen={isFullscreen} onToggleFullscreen={toggleFullscreen} />
 
             {/* Headline stat cards */}
             <StatCards />

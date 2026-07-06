@@ -1,10 +1,9 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Html, Line } from '@react-three/drei';
-import type { Line2 } from 'three-stdlib';
-import { Group, Vector3 } from 'three';
+import { Html } from '@react-three/drei';
+import { BufferGeometry, Float32BufferAttribute, Group, Line, LineBasicMaterial, Vector3 } from 'three';
 import type { PartDefinition } from '@/hardware/types';
 import { useActiveHardware, useHardwareStore } from '@/state/useHardwareStore';
 import { partRegistry } from './partRegistry';
@@ -37,11 +36,40 @@ const anchorWorld = new Vector3();
 
 function PartLabel({ part, index }: { part: PartDefinition; index: number }) {
   const holder = useRef<Group>(null!);
-  const line = useRef<Line2>(null!);
   const [occluded, setOccluded] = useState(false);
   const [active, setActive] = useState(false);
 
+  // How long occlusion must hold before we act on it, in seconds. Debouncing
+  // the raycast result stops the label from flickering as geometry sweeps past
+  // the sight line during rotation.
+  const occludeAccum = useRef(0);
+  const rawOccluded = useRef(false);
+
   const isSelected = useHardwareStore((s) => s.selectedPartIds.includes(part.id));
+
+  // A plain two-vertex THREE.Line we mutate in place every frame — a clean 1px
+  // screen line that reprojects smoothly, unlike the fat-line (Line2) shader
+  // which needs a resolution uniform and wobbles when its endpoints move live.
+  // Built imperatively and mounted via <primitive> to sidestep the SVG `<line>`
+  // JSX-type collision in .tsx files.
+  const line = useMemo(() => {
+    const g = new BufferGeometry();
+    g.setAttribute('position', new Float32BufferAttribute([0, 0, 0, 0, 0, 0], 3));
+    const m = new LineBasicMaterial({ transparent: true });
+    return new Line(g, m);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      line.geometry.dispose();
+      (line.material as LineBasicMaterial).dispose();
+    };
+  }, [line]);
+
+  // Keep the line's color/opacity in sync with selection state.
+  const mat = line.material as LineBasicMaterial;
+  mat.color.set(isSelected ? tokens.accentBright : tokens.labelLine);
+  mat.opacity = isSelected ? 0.9 : 0.4;
   const shown = useHardwareStore((s) => {
     if (s.hiddenPartIds.includes(part.id)) return false;
     if (s.isolatedPartIds.length > 0 && !s.isolatedPartIds.includes(part.id)) return false;
@@ -49,7 +77,7 @@ function PartLabel({ part, index }: { part: PartDefinition; index: number }) {
     return true;
   });
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     const entry = partRegistry.get(part.id);
     if (!entry || !holder.current) return;
     entry.anchor.getWorldPosition(anchorWorld);
@@ -60,35 +88,36 @@ function PartLabel({ part, index }: { part: PartDefinition; index: number }) {
       anchorWorld.z + part.labelOffset[2] * spread,
     );
     holder.current.visible = shown;
-    if (line.current) {
-      line.current.visible = shown && !occluded;
-      const p = holder.current.position;
-      line.current.geometry.setPositions([
-        anchorWorld.x, anchorWorld.y, anchorWorld.z,
-        p.x, p.y, p.z,
-      ]);
+
+    // Debounce occlusion: only commit a change once the raw raycast result has
+    // held steady for ~120ms, so momentary flips during rotation don't flicker.
+    if (rawOccluded.current !== occluded) {
+      occludeAccum.current += delta;
+      if (occludeAccum.current >= 0.12) {
+        occludeAccum.current = 0;
+        setOccluded(rawOccluded.current);
+      }
+    } else {
+      occludeAccum.current = 0;
     }
+
+    line.visible = shown && !occluded;
+    const p = holder.current.position;
+    const pos = line.geometry.attributes.position;
+    pos.setXYZ(0, anchorWorld.x, anchorWorld.y, anchorWorld.z);
+    pos.setXYZ(1, p.x, p.y, p.z);
+    pos.needsUpdate = true;
   });
 
   return (
     <>
-      <Line
-        ref={line}
-        points={[
-          [0, 0, 0],
-          [0, 0.001, 0],
-        ]}
-        color={isSelected ? tokens.accentBright : tokens.labelLine}
-        lineWidth={1}
-        transparent
-        opacity={isSelected ? 0.9 : 0.4}
-      />
+      <primitive object={line} />
       <group ref={holder}>
         <Html
           center
           occlude
           onOcclude={(v) => {
-            setOccluded(v);
+            rawOccluded.current = v;
             return null;
           }}
           zIndexRange={[zIndex.labels, zIndex.labels]}

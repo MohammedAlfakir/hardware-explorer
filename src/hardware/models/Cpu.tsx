@@ -16,31 +16,32 @@ const ORANGE_LIGHT = '#ffb25e';
 const TEAL = '#0fa48e';
 
 /* ——— Vertical stack (world Y, package lying flat, top up) ———
- * Compressed to real package proportions: the whole assembly above the
- * substrate is ~0.28 units on a 2.9-wide package (≈ 3.5 mm on 37 mm).
+ * Real package proportions: a die is a wafer-thin sliver and the lid sits
+ * almost directly on it — everything above the substrate is ~0.25 units on
+ * a 2.9-wide package (≈ 3 mm on 37 mm).
  * substrate  [-0.06 .. 0.06]
- * die        [ 0.05 .. 0.12]
- * core/cache [ 0.12 .. 0.15]
- * solder TIM [ 0.15 .. 0.19]
- * IHS        [ 0.19 .. ~0.34] (thin stamped shell + low plateau)
+ * die        [ 0.06 .. 0.105]
+ * core/cache [ 0.107 .. 0.123] (etched panels on the die surface)
+ * solder TIM [ 0.125 .. 0.145]
+ * IHS        [ 0.158 .. ~0.31] (thin stamped shell + low plateau)
  */
 const SUB_W = 2.9;
 const SUB_H = 0.12;
 const SUB_TOP = SUB_H / 2;
-const DIE_Y = 0.085;
-const LAYER_Y = 0.135;
-const TIM_Y = 0.17;
-const IHS_Y = 0.205; // lid extrusion origin; bottom bevel dips slightly below
-const SKIRT_H = 0.133; // substrate top -> lid underside
-const SKIRT_Y = -0.0785; // skirt center, local to the IHS part
+const DIE_Y = 0.0825;
+const LAYER_Y = 0.115;
+const TIM_Y = 0.135;
+const IHS_Y = 0.17; // lid extrusion origin; bottom bevel dips slightly below
+const SKIRT_H = 0.098; // substrate top -> lid underside
+const SKIRT_Y = -0.061; // skirt center, local to the IHS part
 
 /* IHS silhouette parameters (classic winged LGA lid — thin & flat) */
-const IHS_W = 1.24; // body half-width  (x)
+const IHS_W = 1.22; // body half-width  (x)
 const IHS_H = 0.98; // body half-depth  (z)
-const IHS_E = 0.38; // wing extension beyond the body
-const IHS_C = 0.16; // body corner chamfer
-const WING_W = 0.66; // wing half-width
-const WING_C = 0.1; // wing corner chamfer
+const IHS_E = 0.32; // wing extension beyond the body
+const IHS_C = 0.09; // body corner chamfer
+const WING_W = 0.54; // wing half-width
+const WING_C = 0.07; // wing corner chamfer
 
 /**
  * CPU — modern LGA desktop processor. Green package substrate with pin-1
@@ -112,8 +113,8 @@ export function CpuModel() {
   );
 
   /* 16 execution cores (4×4) and the fine SRAM ridges of the L3 slab. */
-  const coreBlocks = useMemo(() => gridTransforms(4, 4, 0.29, 0.29, 0.03), []);
-  const cacheRidges = useMemo(() => gridTransforms(1, 14, 0, 0.036, 0.022), []);
+  const coreBlocks = useMemo(() => gridTransforms(4, 4, 0.29, 0.29, 0.014), []);
+  const cacheRidges = useMemo(() => gridTransforms(1, 14, 0, 0.036, 0.011), []);
 
   /* Winged, chamfered IHS outline (CCW). */
   const lidShape = useMemo(() => {
@@ -148,10 +149,11 @@ export function CpuModel() {
     return s;
   }, []);
 
-  /* Raised central plateau — low mesa with a soft rounded transition. */
+  /* Raised central plateau — dominates the lid like the real part, with a
+   * thin flange rim visible around it and a soft rounded transition. */
   const plateauShape = useMemo(() => {
-    const P = 0.8;
-    const c = 0.16;
+    const P = 0.88; // + 0.05 bevel stays inside the 0.98 flange half-depth
+    const c = 0.2;
     const s = new Shape();
     s.moveTo(P, -(P - c));
     s.lineTo(P, P - c);
@@ -171,7 +173,7 @@ export function CpuModel() {
     [],
   );
   const plateauExtrude = useMemo<ExtrudeGeometryOptions>(
-    () => ({ depth: 0.04, steps: 1, bevelEnabled: true, bevelThickness: 0.04, bevelSize: 0.04, bevelSegments: 4 }),
+    () => ({ depth: 0.04, steps: 1, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.05, bevelSegments: 5 }),
     [],
   );
 
@@ -210,36 +212,36 @@ export function CpuModel() {
         </Instanced>
       </Part>
 
-      {/* Monolithic silicon die */}
+      {/* Monolithic silicon die — a wafer-thin sliver */}
       <Part definition={defOf(HW, 'die')} position={[0, DIE_Y, 0]}>
         <mesh castShadow material={mat('silicon')}>
-          <boxGeometry args={[1.5, 0.07, 1.85]} />
+          <boxGeometry args={[1.5, 0.045, 1.85]} />
         </mesh>
       </Part>
 
-      {/* Core complex — 16 cores in a 4×4 grid (educational layer) */}
+      {/* Core complex — 16 cores etched into the die surface (educational) */}
       <Part definition={defOf(HW, 'core-layer')} position={[0, LAYER_Y, -0.35]}>
         <mesh material={mat('chipLabel')} castShadow={false}>
-          <boxGeometry args={[1.32, 0.03, 1.16]} />
+          <boxGeometry args={[1.32, 0.014, 1.16]} />
         </mesh>
         <Instanced transforms={coreBlocks} material={mat('chipSilk')} castShadow={false}>
-          <boxGeometry args={[0.24, 0.03, 0.24]} />
+          <boxGeometry args={[0.24, 0.014, 0.24]} />
         </Instanced>
       </Part>
 
       {/* Shared L3 cache — flat slab with fine SRAM ridges (educational layer) */}
       <Part definition={defOf(HW, 'cache-layer')} position={[0, LAYER_Y, 0.62]}>
         <mesh material={mat('chipLabel')} castShadow={false}>
-          <boxGeometry args={[1.32, 0.03, 0.58]} />
+          <boxGeometry args={[1.32, 0.014, 0.58]} />
         </mesh>
         <Instanced transforms={cacheRidges} material={mat('silicon')} castShadow={false}>
           <boxGeometry args={[1.18, 0.012, 0.018]} />
         </Instanced>
       </Part>
 
-      {/* Solder TIM — thin light-gray slab slightly smaller than the die */}
+      {/* Solder TIM — thin light-gray film slightly smaller than the die */}
       <Part definition={defOf(HW, 'thermal-paste')} position={[0, TIM_Y, 0]}>
-        <RoundedBox args={[1.42, 0.035, 1.78]} radius={0.015} smoothness={2} material={mat('thermalPaste')} />
+        <RoundedBox args={[1.42, 0.02, 1.78]} radius={0.01} smoothness={2} material={mat('thermalPaste')} />
       </Part>
 
       {/* Integrated heat spreader — thin winged flange + low rounded plateau */}
@@ -248,8 +250,8 @@ export function CpuModel() {
         <Extrude args={[plateauShape, plateauExtrude]} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.055, 0]} castShadow material={mat('brushedAluminum')} />
         {/* Laser-etched markings */}
         {etchMaterial && (
-          <mesh position={[0, 0.137, 0]} rotation={[-Math.PI / 2, 0, 0]} material={etchMaterial}>
-            <planeGeometry args={[1.45, 0.72]} />
+          <mesh position={[0, 0.148, 0]} rotation={[-Math.PI / 2, 0, 0]} material={etchMaterial}>
+            <planeGeometry args={[1.6, 0.8]} />
           </mesh>
         )}
         {/* Inset skirt wall sealing the lid to the substrate */}

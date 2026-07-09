@@ -44,20 +44,81 @@ export function CameraManager() {
     return Math.max(b[0], b[1], b[2]);
   };
 
+  /**
+   * Bounding sphere of the CURRENT assembly state. While exploded, every
+   * part's real explode vector is folded in, so the sphere covers the fully
+   * separated assembly (center included — explosions are asymmetric, most
+   * parts travel +Y).
+   */
+  const currentFit = () => {
+    const s = useHardwareStore.getState();
+    const def = HARDWARE[s.activeHardwareId];
+    const [w, h, d] = def.bounds;
+    const offMin = new Vector3();
+    const offMax = new Vector3();
+    if (s.exploded) {
+      const scale = 0.4 + s.explodeDistance * 1.2;
+      for (const p of def.parts) {
+        const off = new Vector3(...p.explodeDir).multiplyScalar(p.explodeDist * scale);
+        offMin.min(off);
+        offMax.max(off);
+      }
+    }
+    const min = new Vector3(-w / 2, -h / 2, -d / 2).add(offMin);
+    const max = new Vector3(w / 2, h / 2, d / 2).add(offMax);
+    const center = min.clone().add(max).multiplyScalar(0.5);
+    const radius = max.clone().sub(min).length() / 2;
+    return { center, radius };
+  };
+
+  /** Distance at which a sphere of this radius fits the viewport (fov 38°). */
+  const fitDistance = (radius: number) => {
+    const s = sizeRef.current;
+    const aspect = s.width / Math.max(s.height, 1);
+    const fovV = (38 * Math.PI) / 180;
+    const fovH = 2 * Math.atan(Math.tan(fovV / 2) * aspect);
+    const half = Math.min(fovV, fovH) / 2;
+    return (radius / Math.sin(half)) * 1.06;
+  };
+
+  /** Orthographic zoom at which a sphere of this radius fits the viewport. */
   const orthoFit = (radius: number) => {
     const s = sizeRef.current;
-    return Math.min(s.width, s.height) / (radius * 1.9);
+    return Math.min(s.width, s.height) / (radius * 2.24);
   };
 
   const goPreset = (preset: ViewPreset, animate = true) => {
     const c = controls.current;
     if (!c) return;
-    const r = modelRadius();
-    const dist = r * 1.85;
-    const dir = PRESET_DIRS[preset].clone().normalize().multiplyScalar(dist);
-    void c.setLookAt(dir.x, dir.y, dir.z, 0, 0, 0, animate);
+    const { center, radius } = currentFit();
+    const dir = PRESET_DIRS[preset].clone().normalize().multiplyScalar(fitDistance(radius));
+    void c.setLookAt(
+      center.x + dir.x, center.y + dir.y, center.z + dir.z,
+      center.x, center.y, center.z,
+      animate,
+    );
     if (useHardwareStore.getState().cameraMode === 'orthographic') {
-      void c.zoomTo(orthoFit(r), animate);
+      void c.zoomTo(orthoFit(radius), animate);
+    }
+  };
+
+  /** Re-frame the current assembly, preserving the viewing direction. */
+  const refit = (animate = true) => {
+    const c = controls.current;
+    if (!c) return;
+    const { center, radius } = currentFit();
+    const pos = c.getPosition(new Vector3());
+    const tgt = c.getTarget(new Vector3());
+    const dir = pos.sub(tgt);
+    if (dir.lengthSq() < 1e-6) dir.copy(PRESET_DIRS.isometric);
+    dir.normalize().multiplyScalar(fitDistance(radius));
+    void c.setLookAt(
+      center.x + dir.x, center.y + dir.y, center.z + dir.z,
+      center.x, center.y, center.z,
+      animate,
+    );
+    if (useHardwareStore.getState().cameraMode === 'orthographic') {
+      void c.zoomTo(orthoFit(radius), animate);
     }
   };
 
@@ -87,22 +148,24 @@ export function CameraManager() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* Pull back while exploded so the separated assembly stays framed. */
+  /* Re-frame to the true exploded/assembled bounds whenever the explosion
+   * toggles or its spread changes — no part ever leaves the viewport. */
   useEffect(() => {
-    const unsub = useHardwareStore.subscribe(
+    const unsubExploded = useHardwareStore.subscribe(
       (s) => s.exploded,
-      (exploded) => {
-        const c = controls.current;
-        if (!c) return;
-        const factor = exploded ? 1.5 : 1 / 1.5;
-        if (useHardwareStore.getState().cameraMode === 'orthographic') {
-          void c.zoomTo(c.camera.zoom / factor, true);
-        } else {
-          void c.dollyTo(c.distance * factor, true);
-        }
+      () => refit(true),
+    );
+    const unsubSpread = useHardwareStore.subscribe(
+      (s) => s.explodeDistance,
+      () => {
+        if (useHardwareStore.getState().exploded) refit(true);
       },
     );
-    return unsub;
+    return () => {
+      unsubExploded();
+      unsubSpread();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /* Re-frame when swapping projections. */
@@ -135,12 +198,23 @@ export function CameraManager() {
     const r = modelRadius();
     c.minDistance = r * 0.55;
     c.maxDistance = r * 4.5;
-    c.minZoom = orthoFit(r) * 0.35;
-    c.maxZoom = orthoFit(r) * 3.5;
-    // Re-clamp the current distance/zoom immediately (e.g. after a model
-    // swap where the new bounds are smaller than the old camera framing).
+    // Re-clamp the current distance immediately (e.g. after a model swap
+    // where the new bounds are smaller than the old camera framing).
     void c.dollyTo(Math.min(Math.max(c.distance, c.minDistance), c.maxDistance), false);
-    void c.zoomTo(Math.min(Math.max(c.camera.zoom, c.minZoom), c.maxZoom), false);
+
+    // camera.zoom acts on PERSPECTIVE cameras too (telephoto effect), so
+    // zoom limits only ever apply in orthographic mode; in perspective the
+    // zoom is pinned to 1 and framing is distance-based.
+    if (useHardwareStore.getState().cameraMode === 'orthographic') {
+      const sphereR = currentFit().radius;
+      c.minZoom = orthoFit(sphereR) * 0.35;
+      c.maxZoom = orthoFit(sphereR) * 3.5;
+      void c.zoomTo(Math.min(Math.max(c.camera.zoom, c.minZoom), c.maxZoom), false);
+    } else {
+      c.minZoom = 0.01;
+      c.maxZoom = Infinity;
+      void c.zoomTo(1, false);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

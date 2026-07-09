@@ -235,6 +235,7 @@ export function ViewportToolbar() {
             value={'isometric' as ViewPreset}
             options={VIEW_OPTIONS}
             onChange={(v) => s.applyPreset(v)}
+            direction="up"
           />
           <Separator vertical />
           <IconButton
@@ -250,6 +251,7 @@ export function ViewportToolbar() {
             options={MATERIAL_OPTIONS.map((o) => ({ ...o, icon: 'palette' as const }))}
             onChange={s.setMaterialVariant}
             compact
+            direction="up"
           />
           <Separator vertical />
           <IconButton icon="fit" label="Fit to view" kbd="F" tooltipSide="top" onClick={() => s.applyPreset('isometric')} />

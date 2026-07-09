@@ -130,7 +130,13 @@ function PartLabel({ part, index }: { part: PartDefinition; index: number }) {
         >
           <button
             type="button"
-            onClick={() => useHardwareStore.getState().selectPart(part.id)}
+            onClick={(e) => {
+              // Without this the click bubbles to the canvas container and
+              // fires R3F's onPointerMissed, which clears the selection the
+              // label click just made.
+              e.stopPropagation();
+              useHardwareStore.getState().selectPart(part.id);
+            }}
             onMouseEnter={() => {
               setActive(true);
               useHardwareStore.getState().setHoveredPart(part.id);

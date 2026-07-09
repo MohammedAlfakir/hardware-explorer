@@ -191,6 +191,8 @@ interface DropdownProps<T extends string> {
   label: string;
   buttonClassName?: string;
   compact?: boolean;
+  /** Where the menu opens; use 'up' near the bottom edge of a clipped container. */
+  direction?: 'down' | 'up';
 }
 
 export function Dropdown<T extends string>({
@@ -200,6 +202,7 @@ export function Dropdown<T extends string>({
   label,
   buttonClassName,
   compact = false,
+  direction = 'down',
 }: DropdownProps<T>) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
@@ -242,13 +245,16 @@ export function Dropdown<T extends string>({
       <AnimatePresence>
         {open && (
           <fm.ul
-            initial={{ opacity: 0, y: -4, scale: 0.98 }}
+            initial={{ opacity: 0, y: direction === 'up' ? 4 : -4, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -4, scale: 0.98 }}
+            exit={{ opacity: 0, y: direction === 'up' ? 4 : -4, scale: 0.98 }}
             transition={{ duration: motionTokens.duration.fast, ease: EASE }}
             role="listbox"
             aria-label={label}
-            className="absolute right-0 top-full z-50 mt-1.5 min-w-[160px] overflow-hidden rounded-md border border-border bg-surface2 p-1 shadow-elevation-3"
+            className={cx(
+              'absolute right-0 z-50 min-w-[160px] overflow-hidden rounded-md border border-border bg-surface2 p-1 shadow-elevation-3',
+              direction === 'up' ? 'bottom-full mb-1.5' : 'top-full mt-1.5',
+            )}
           >
             {options.map((o) => (
               <li key={o.value}>

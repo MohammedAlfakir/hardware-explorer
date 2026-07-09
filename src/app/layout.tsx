@@ -14,7 +14,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: 'HardLab — Interactive 3D Hardware',
+  title: 'HardwareLab — Interactive 3D Hardware',
   description:
     'Learn. Explore. Compute. Rotate, dissect and explode real PC hardware — six museum-grade interactive 3D models, from silicon die to cooling fin.',
 };

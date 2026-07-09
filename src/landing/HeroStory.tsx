@@ -273,7 +273,7 @@ export function HeroStory() {
         className="absolute right-7 top-1/2 z-[6] hidden -translate-y-1/2 rotate-180 font-mono text-[9px] font-bold uppercase tracking-[0.4em] text-text-tertiary/70 laptop:block"
         style={{ writingMode: 'vertical-rl' }}
       >
-        Hardlab — Interactive Hardware Lab — EST. 2026
+        HardwareLab — Interactive Hardware Lab — EST. 2026
       </div>
 
       {/* Hero copy */}
@@ -281,7 +281,7 @@ export function HeroStory() {
         <div className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col justify-center px-6 tablet:px-10">
           <p className="hero-fade mb-5 flex items-center gap-2.5 text-[11px] font-bold uppercase tracking-[0.3em] text-accent">
             <span className="inline-block h-[2px] w-8 bg-accent" aria-hidden />
-            Hardlab · Interactive 3D Hardware
+            HardwareLab · Interactive 3D Hardware
           </p>
           <h1 className="max-w-[12ch] text-[clamp(3.2rem,9.5vw,8.75rem)] font-extrabold leading-[0.94] tracking-tight text-text-primary">
             <HeadlineChars />

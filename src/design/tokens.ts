@@ -3,7 +3,7 @@
  * application. UI components consume these through Tailwind (see
  * tailwind.config.ts) or by importing this module directly (Three.js side).
  *
- * Theme: HARDLAB — light chrome, charcoal sidebar, signal-orange accent.
+ * Theme: HardwareLab — light chrome, charcoal sidebar, signal-orange accent.
  * Never hardcode a visual value in a component.
  */
 

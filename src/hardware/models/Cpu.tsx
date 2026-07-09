@@ -64,7 +64,7 @@ export function CpuModel() {
     ctx.fillStyle = 'rgba(82, 86, 92, 0.9)';
     ctx.textAlign = 'center';
     ctx.font = '600 54px system-ui, sans-serif';
-    ctx.fillText('HARDLAB®', 512, 150);
+    ctx.fillText('HARDWARELAB®', 512, 150);
     ctx.font = '700 78px system-ui, sans-serif';
     ctx.fillText('HL CORE X16', 512, 258);
     ctx.font = '500 46px ui-monospace, monospace';

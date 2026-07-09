@@ -1,22 +1,22 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { AnimatePresence, motion as fm } from 'framer-motion';
-import { HARDWARE_LIST } from '@/hardware/registry';
-import { useHardwareStore } from '@/state/useHardwareStore';
-import { motion as motionTokens } from '@/design/tokens';
-import { Icon } from './icons';
-import { cx } from './primitives';
-import { HardwareThumb } from './thumbs';
+import Link from "next/link";
+import { AnimatePresence, motion as fm } from "framer-motion";
+import { HARDWARE_LIST } from "@/hardware/registry";
+import { useHardwareStore } from "@/state/useHardwareStore";
+import { motion as motionTokens } from "@/design/tokens";
+import { Icon } from "./icons";
+import { cx } from "./primitives";
+import { HardwareThumb } from "./thumbs";
 
-/** HARDLAB wordmark + tagline. */
+/** HardwareLab wordmark + tagline — links back to the landing page. */
 function Brand() {
   return (
     <div className="shrink-0 px-6 pb-6 pt-7">
-      <div className="text-2xl font-extrabold leading-none tracking-tight">
-        <span className="text-sidebar-text">HARD</span>
+      <Link href="/" className="inline-block text-2xl font-extrabold leading-none tracking-tight">
+        <span className="text-sidebar-text">HARDWARE</span>
         <span className="text-accent">LAB</span>
-      </div>
+      </Link>
       <p className="mt-2 text-[10px] font-medium uppercase tracking-[0.28em] text-sidebar-dim">
         Learn. Explore. Compute.
       </p>
@@ -25,9 +25,9 @@ function Brand() {
 }
 
 function ModelList() {
-  const activeId = useHardwareStore((s) => s.activeHardwareId);
-  const setActive = useHardwareStore((s) => s.setActiveHardware);
-  const setSidebarOpen = useHardwareStore((s) => s.setSidebarOpen);
+  const activeId = useHardwareStore(s => s.activeHardwareId);
+  const setActive = useHardwareStore(s => s.setActiveHardware);
+  const setSidebarOpen = useHardwareStore(s => s.setSidebarOpen);
 
   return (
     <div className="scrollbar-dark flex-1 overflow-y-auto px-4 pb-4">
@@ -35,22 +35,22 @@ function ModelList() {
         Hardware Models
       </h3>
       <ul className="flex flex-col gap-2.5" role="list">
-        {HARDWARE_LIST.map((hw) => {
+        {HARDWARE_LIST.map(hw => {
           const active = hw.id === activeId;
           return (
             <li key={hw.id}>
               <button
                 type="button"
-                aria-current={active ? 'true' : undefined}
+                aria-current={active ? "true" : undefined}
                 onClick={() => {
                   setActive(hw.id);
                   setSidebarOpen(false);
                 }}
                 className={cx(
-                  'group flex w-full items-center gap-3.5 rounded-lg border p-2.5 text-left transition-all duration-200',
+                  "group flex w-full items-center gap-3.5 rounded-lg border p-2.5 text-left transition-all duration-200",
                   active
-                    ? 'border-accent bg-sidebar-hover shadow-[0_0_0_1px_rgba(246,130,31,0.25),0_8px_24px_rgba(0,0,0,0.35)]'
-                    : 'border-sidebar-border bg-sidebar-surface hover:border-sidebar-border-strong hover:bg-sidebar-hover',
+                    ? "border-accent bg-sidebar-hover shadow-[0_0_0_1px_rgba(246,130,31,0.25),0_8px_24px_rgba(0,0,0,0.35)]"
+                    : "border-sidebar-border bg-sidebar-surface hover:border-sidebar-border-strong hover:bg-sidebar-hover",
                 )}
               >
                 <span className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-white p-1 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.05)]">
@@ -63,10 +63,10 @@ function ModelList() {
                   name="chevronRight"
                   size={14}
                   className={cx(
-                    'shrink-0 transition-all duration-200',
+                    "shrink-0 transition-all duration-200",
                     active
-                      ? 'text-accent'
-                      : 'text-sidebar-dim group-hover:translate-x-0.5 group-hover:text-sidebar-text',
+                      ? "text-accent"
+                      : "text-sidebar-dim group-hover:translate-x-0.5 group-hover:text-sidebar-text",
                   )}
                 />
               </button>
@@ -78,16 +78,18 @@ function ModelList() {
   );
 }
 
-function BrowseAll() {
+function PortfolioLink() {
   return (
-    <div className="shrink-0 px-4 pb-5 pt-2">
-      <Link
-        href="/"
+    <div className="shrink-0 px-2 pb-5 pt-2">
+      <a
+        href="https://www.mohammedalfakir.site/"
+        target="_blank"
+        rel="noopener noreferrer"
         className="flex w-full items-center justify-between rounded-lg border border-sidebar-border bg-sidebar-surface px-4 py-3 text-[11px] font-bold uppercase tracking-[0.14em] text-sidebar-text transition-colors hover:border-sidebar-border-strong hover:bg-sidebar-hover"
       >
-        Browse all models
-        <Icon name="grid" size="sm" className="text-sidebar-dim" />
-      </Link>
+        Made by Mohammed Alfakir
+        <Icon name="chevronRight" size="sm" className="text-sidebar-dim" />
+      </a>
     </div>
   );
 }
@@ -97,15 +99,15 @@ function SidebarBody() {
     <>
       <Brand />
       <ModelList />
-      <BrowseAll />
+      <PortfolioLink />
     </>
   );
 }
 
 /** Sidebar — persistent charcoal rail on desktop, animated drawer below lg. */
 export function Sidebar() {
-  const open = useHardwareStore((s) => s.sidebarOpen);
-  const setOpen = useHardwareStore((s) => s.setSidebarOpen);
+  const open = useHardwareStore(s => s.sidebarOpen);
+  const setOpen = useHardwareStore(s => s.setSidebarOpen);
 
   return (
     <>
@@ -136,7 +138,10 @@ export function Sidebar() {
               initial={{ x: -300 }}
               animate={{ x: 0 }}
               exit={{ x: -300 }}
-              transition={{ duration: motionTokens.duration.base, ease: motionTokens.ease.out }}
+              transition={{
+                duration: motionTokens.duration.base,
+                ease: motionTokens.ease.out,
+              }}
               role="dialog"
               aria-modal="true"
               aria-label="Hardware library"

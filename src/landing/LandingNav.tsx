@@ -10,7 +10,7 @@ export function LandingNav() {
     <header className="fixed inset-x-0 top-0 z-40">
       <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-8 px-6 tablet:px-10">
         <Link href="/" className="text-lg font-extrabold tracking-tight text-text-primary">
-          HARD<span className="text-accent">LAB</span>
+          HARDWARE<span className="text-accent">LAB</span>
         </Link>
 
         <nav aria-label="Models" className="ml-auto hidden items-center gap-6 laptop:flex">

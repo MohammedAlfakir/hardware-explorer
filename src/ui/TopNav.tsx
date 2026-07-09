@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useHardwareStore } from '@/state/useHardwareStore';
 import { Icon } from './icons';
 
-/** Top navigation — HARDLAB wordmark (links home), account avatar. */
+/** Top navigation — HardwareLab wordmark (links home), account avatar. */
 export function TopNav() {
   const setSidebarOpen = useHardwareStore((s) => s.setSidebarOpen);
 
@@ -21,7 +21,7 @@ export function TopNav() {
       </button>
 
       <Link href="/" className="text-lg font-extrabold tracking-tight text-text-primary">
-        HARD<span className="text-accent">LAB</span>
+        HARDWARE<span className="text-accent">LAB</span>
       </Link>
 
       <div className="ml-auto flex items-center gap-3">

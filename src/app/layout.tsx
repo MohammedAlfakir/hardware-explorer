@@ -14,13 +14,13 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: 'CoreView — Interactive Hardware Explorer',
+  title: 'HardLab — Interactive 3D Hardware',
   description:
-    'Explore real computer hardware in 3D. Inspect, explode, isolate and learn how CPUs, GPUs, memory and storage actually work.',
+    'Learn. Explore. Compute. Rotate, dissect and explode real PC hardware — six museum-grade interactive 3D models, from silicon die to cooling fin.',
 };
 
 export const viewport: Viewport = {
-  themeColor: '#07090D',
+  themeColor: '#F6F6F4',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -32,7 +32,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}
       >

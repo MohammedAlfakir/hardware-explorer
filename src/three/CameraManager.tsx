@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { useThree } from '@react-three/fiber';
+import { useCallback, useEffect, useRef } from 'react';
+import { useFrame, useThree } from '@react-three/fiber';
 import {
   CameraControls,
   OrthographicCamera,
@@ -127,6 +127,47 @@ export function CameraManager() {
           : ACTION.TOUCH_ROTATE;
   }, [controlMode, cameraMode]);
 
+  /* Keep zoom and pan scoped to the model — never let the user dolly (or,
+   * in orthographic mode, zoom) past the piece, in either direction. */
+  const applyZoomLimits = useCallback(() => {
+    const c = controls.current;
+    if (!c) return;
+    const r = modelRadius();
+    c.minDistance = r * 0.55;
+    c.maxDistance = r * 4.5;
+    c.minZoom = orthoFit(r) * 0.35;
+    c.maxZoom = orthoFit(r) * 3.5;
+    // Re-clamp the current distance/zoom immediately (e.g. after a model
+    // swap where the new bounds are smaller than the old camera framing).
+    void c.dollyTo(Math.min(Math.max(c.distance, c.minDistance), c.maxDistance), false);
+    void c.zoomTo(Math.min(Math.max(c.camera.zoom, c.minZoom), c.maxZoom), false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    applyZoomLimits();
+  }, [cameraMode, applyZoomLimits]);
+
+  useEffect(() => {
+    const unsub = useHardwareStore.subscribe((s) => s.activeHardwareId, applyZoomLimits);
+    return unsub;
+  }, [applyZoomLimits]);
+
+  /* Clamp the orbit target to a bounded radius around the model center so
+   * panning can nudge the framing but never drag it far away. */
+  useFrame(() => {
+    const c = controls.current;
+    if (!c) return;
+    const r = modelRadius();
+    const maxPan = r * 0.75;
+    const t = c.getTarget(new Vector3());
+    const dist = t.length();
+    if (dist > maxPan) {
+      t.multiplyScalar(maxPan / dist);
+      void c.setTarget(t.x, t.y, t.z, false);
+    }
+  });
+
   const r = modelRadius();
 
   return (
@@ -142,8 +183,8 @@ export function CameraManager() {
         makeDefault
         smoothTime={0.28}
         draggingSmoothTime={0.08}
-        minDistance={1.2}
-        maxDistance={40}
+        minDistance={r * 0.55}
+        maxDistance={r * 4.5}
         maxPolarAngle={Math.PI * 0.92}
         dollyToCursor
       />

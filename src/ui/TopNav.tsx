@@ -1,12 +1,10 @@
 'use client';
 
+import Link from 'next/link';
 import { useHardwareStore } from '@/state/useHardwareStore';
 import { Icon } from './icons';
-import { cx } from './primitives';
 
-const NAV_LINKS = ['Explore', 'Library', 'Lessons', 'About'] as const;
-
-/** Top navigation — section label, primary links, account avatar. */
+/** Top navigation — HARDLAB wordmark (links home), account avatar. */
 export function TopNav() {
   const setSidebarOpen = useHardwareStore((s) => s.setSidebarOpen);
 
@@ -22,30 +20,11 @@ export function TopNav() {
         <Icon name="menu" size="lg" />
       </button>
 
-      <span className="truncate text-xs font-bold uppercase tracking-[0.22em] text-text-primary">
-        Interactive 3D Hardware
-      </span>
+      <Link href="/" className="text-lg font-extrabold tracking-tight text-text-primary">
+        HARD<span className="text-accent">LAB</span>
+      </Link>
 
-      <nav aria-label="Primary" className="ml-auto hidden items-center gap-7 tablet:flex">
-        {NAV_LINKS.map((link, i) => (
-          <a
-            key={link}
-            href="#"
-            onClick={(e) => e.preventDefault()}
-            aria-current={i === 0 ? 'page' : undefined}
-            className={cx(
-              'text-sm font-medium transition-colors',
-              i === 0
-                ? 'text-text-primary'
-                : 'text-text-secondary hover:text-text-primary',
-            )}
-          >
-            {link}
-          </a>
-        ))}
-      </nav>
-
-      <div className="ml-4 flex items-center gap-3 border-l border-border pl-4 tablet:ml-6 tablet:pl-6">
+      <div className="ml-auto flex items-center gap-3">
         <button
           type="button"
           aria-label="Account"

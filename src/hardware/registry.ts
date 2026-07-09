@@ -341,8 +341,8 @@ export const HARDWARE: Record<HardwareId, HardwareDefinition> = {
         name: 'PCIe ×16 Edge Connector',
         description:
           'Gold-plated edge fingers carrying 16 lanes of PCIe 5.0 — 64 GB/s each way.',
-        explodeDir: [0, -1, 0],
-        explodeDist: 1.35,
+        explodeDir: [0, -0.35, 1],
+        explodeDist: 1.1,
         labelOffset: [-1.8, -1.0, 0.9],
         specs: [
           { label: 'Interface', value: 'PCIe 5.0 ×16' },

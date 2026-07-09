@@ -20,6 +20,27 @@ body {
   overscroll-behavior: none;
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Landing marquee ticker */
+@keyframes marquee-scroll {
+  to {
+    transform: translateX(-50%);
+  }
+}
+.marquee {
+  animation: marquee-scroll 28s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .marquee {
+    animation: none;
+  }
+}
+
 body {
   color: var(--text-primary);
   background: var(--bg);

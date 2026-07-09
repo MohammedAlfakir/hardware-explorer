@@ -310,11 +310,14 @@ export function GpuModel() {
     return spots.map(([x, z]) => ({ position: [x, 0, z] as [number, number, number] }));
   }, []);
 
-  // PCIe x16 gold fingers: 11-lane segment, key notch, then the long segment.
+  // PCIe x16 fingers: plated on BOTH faces of the edge tab — a short power
+  // segment toward the bracket, the key notch, then the main segment.
   const pcieFingers = useMemo(() => {
     const out: InstanceTransform[] = [];
-    for (let i = 0; i < 11; i++) out.push({ position: [-2.42 + i * 0.062, 0, 0] });
-    for (let i = 0; i < 41; i++) out.push({ position: [-1.62 + i * 0.062, 0, 0] });
+    for (const y of [0.041, -0.041]) {
+      for (let i = 0; i < 7; i++) out.push({ position: [-2.66 + i * 0.063, y, 0] });
+      for (let i = 0; i < 25; i++) out.push({ position: [-2.06 + i * 0.066, y, 0] });
+    }
     return out;
   }, []);
 
@@ -374,13 +377,18 @@ export function GpuModel() {
         </mesh>
       </Part>
 
-      {/* ——— PCIe edge connector ——— */}
-      <Part definition={defOf(HW, 'pcie-connector')} position={[-1.1, -0.42, 1.32]}>
-        <mesh castShadow material={mat('pcbBlack')}>
-          <boxGeometry args={[2.75, 0.26, 0.13]} />
+      {/* ——— PCIe edge connector — a tab in the PCB's own plane ——— */}
+      <Part definition={defOf(HW, 'pcie-connector')} position={[0, -0.24, 1.5]}>
+        {/* Tab segments either side of the x16 key notch */}
+        <mesh position={[-2.44, 0, 0]} castShadow material={mat('pcbBlack')}>
+          <boxGeometry args={[0.52, 0.075, 0.3]} />
         </mesh>
+        <mesh position={[-1.26, 0, 0]} castShadow material={mat('pcbBlack')}>
+          <boxGeometry args={[1.72, 0.075, 0.3]} />
+        </mesh>
+        {/* Gold fingers on both faces */}
         <Instanced transforms={pcieFingers} material={mat('goldContact')} castShadow={false}>
-          <boxGeometry args={[0.04, 0.2, 0.14]} />
+          <boxGeometry args={[0.042, 0.012, 0.24]} />
         </Instanced>
       </Part>
 
@@ -510,7 +518,7 @@ export function GpuModel() {
       <Anim id="rendering-pipeline">
         <FlowPath
           points={[
-            [-1.1, -0.35, 1.32],
+            [-1.3, -0.24, 1.55],
             [-0.8, -0.1, 0.6],
             [0, 0.0, 0],
             [0.9, 0.0, -0.4],

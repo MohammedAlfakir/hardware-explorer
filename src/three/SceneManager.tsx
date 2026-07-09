@@ -5,13 +5,11 @@ import { Canvas } from '@react-three/fiber';
 import {
   AdaptiveDpr,
   AdaptiveEvents,
-  ContactShadows,
   Html,
   PerformanceMonitor,
 } from '@react-three/drei';
 import gsap from 'gsap';
 import { Group } from 'three';
-import { HARDWARE } from '@/hardware/registry';
 import { useHardwareStore } from '@/state/useHardwareStore';
 import { color as tokens, motion } from '@/design/tokens';
 import { CpuModel } from '@/hardware/models/Cpu';
@@ -80,24 +78,6 @@ function ModelHost() {
   );
 }
 
-function Ground() {
-  const hardwareId = useHardwareStore((s) => s.activeHardwareId);
-  const bounds = HARDWARE[hardwareId].bounds;
-  const y = -bounds[1] / 2 - 0.55;
-  return (
-    <ContactShadows
-      position={[0, y + 0.01, 0]}
-      opacity={0.42}
-      scale={18}
-      blur={2.4}
-      far={4.5}
-      resolution={512}
-      frames={Infinity}
-      color="#3a3632"
-    />
-  );
-}
-
 function Loader() {
   return (
     <Html center>
@@ -154,7 +134,6 @@ export function SceneManager() {
           <CameraManager />
           <Lighting />
           <ModelHost />
-          <Ground />
           <LabelLayer />
           <MeasureTool />
           <PostFX />

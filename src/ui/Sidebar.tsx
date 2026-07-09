@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { AnimatePresence, motion as fm } from 'framer-motion';
 import { HARDWARE_LIST } from '@/hardware/registry';
 import { useHardwareStore } from '@/state/useHardwareStore';
@@ -80,14 +81,13 @@ function ModelList() {
 function BrowseAll() {
   return (
     <div className="shrink-0 px-4 pb-5 pt-2">
-      <button
-        type="button"
-        onClick={(e) => e.preventDefault()}
+      <Link
+        href="/"
         className="flex w-full items-center justify-between rounded-lg border border-sidebar-border bg-sidebar-surface px-4 py-3 text-[11px] font-bold uppercase tracking-[0.14em] text-sidebar-text transition-colors hover:border-sidebar-border-strong hover:bg-sidebar-hover"
       >
         Browse all models
         <Icon name="grid" size="sm" className="text-sidebar-dim" />
-      </button>
+      </Link>
     </div>
   );
 }
